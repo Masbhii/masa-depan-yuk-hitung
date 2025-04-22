@@ -1,8 +1,7 @@
-
 import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput, NeumorphicTabs } from "@/components/ui/skeuomorphic";
 import { calculateFutureValue, INFLATION_SCENARIOS } from "@/utils/calculators";
-import { formatRupiah } from "@/utils/formatters";
+import { formatRupiah, formatNumberWithSeparator } from "@/utils/formatters";
 
 // Life goal options with default costs
 const LIFE_GOALS = [
@@ -39,7 +38,8 @@ export default function CostFutureCalculator() {
 
   // Handle input changes with useCallback
   const handleCostChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentCost(e.target.value);
+    const rawValue = e.target.value.replace(/\./g, '');
+    setCurrentCost(rawValue);
   }, []);
 
   const handleYearsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,12 +149,11 @@ export default function CostFutureCalculator() {
           <div className="space-y-4">
             <NeumorphicInput
               label="Estimasi Biaya Saat Ini"
-              type="number"
-              value={currentCost}
+              type="text"
+              value={formatNumberWithSeparator(currentCost)}
               onChange={handleCostChange}
               prefix="Rp"
               error={costError}
-              min={0}
             />
             
             <NeumorphicInput

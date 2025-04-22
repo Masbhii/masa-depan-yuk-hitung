@@ -1,10 +1,7 @@
-
 import { useState, useCallback, useMemo } from "react";
-import { NeumorphicCard, NeumorphicInput } from "@/components/ui/skeuomorphic";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { NeumorphicCard, NeumorphicInput, NeumorphicTabs, NeumorphicButton } from "@/components/ui/skeuomorphic";
 import { calculateInvestmentReturn, AssetType, ASSET_RETURNS } from "@/utils/calculators";
-import { formatRupiah, formatPercentage } from "@/utils/formatters";
+import { formatRupiah, formatPercentage, formatNumberWithSeparator } from "@/utils/formatters";
 
 export default function InvestmentComparison() {
   const currentYear = new Date().getFullYear();
@@ -12,13 +9,12 @@ export default function InvestmentComparison() {
   const [startYear, setStartYear] = useState<string>("2015");
   const [selectedAssets, setSelectedAssets] = useState<AssetType[]>(["stocks"]);
   
-  // Error states
   const [amountError, setAmountError] = useState<string>("");
   const [yearError, setYearError] = useState<string>("");
   
-  // Handle input changes with useCallback
   const handleAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInitialAmount(e.target.value);
+    const rawValue = e.target.value.replace(/\./g, '');
+    setInitialAmount(rawValue);
   }, []);
   
   const handleYearChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -35,7 +31,6 @@ export default function InvestmentComparison() {
     });
   }, []);
   
-  // Validate inputs with useCallback
   const validateInputs = useCallback(() => {
     let isValid = true;
     
@@ -56,7 +51,6 @@ export default function InvestmentComparison() {
     return isValid;
   }, [initialAmount, startYear]);
   
-  // Get available years for dropdown using useMemo
   const availableYears = useMemo(() => {
     return Object.keys(ASSET_RETURNS.stocks)
       .map(Number)
@@ -64,7 +58,6 @@ export default function InvestmentComparison() {
       .sort((a, b) => b - a);
   }, [currentYear]);
   
-  // Calculate results with useCallback
   const calculateResults = useCallback(() => {
     if (!validateInputs() || selectedAssets.length === 0) return null;
     
@@ -86,10 +79,8 @@ export default function InvestmentComparison() {
     };
   }, [initialAmount, startYear, selectedAssets, validateInputs, currentYear]);
   
-  // Memoize results
   const results = useMemo(() => calculateResults(), [calculateResults]);
   
-  // Get asset returns for selected assets
   const assetReturnsData = useMemo(() => {
     if (!startYear || yearError) return [];
     
@@ -120,12 +111,11 @@ export default function InvestmentComparison() {
           <div className="space-y-4">
             <NeumorphicInput
               label="Investasi Awal"
-              type="number"
-              value={initialAmount}
+              type="text"
+              value={formatNumberWithSeparator(initialAmount)}
               onChange={handleAmountChange}
               prefix="Rp"
               error={amountError}
-              min={10000}
               className="[&::-webkit-inner-spin-button]:appearance-none"
             />
             

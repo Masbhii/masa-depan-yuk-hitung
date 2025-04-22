@@ -1,8 +1,7 @@
-
 import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput } from "@/components/ui/skeuomorphic";
 import { UMR_DATA, calculatePercentageDifference } from "@/utils/calculators";
-import { formatRupiah, formatPercentage } from "@/utils/formatters";
+import { formatRupiah, formatPercentage, formatNumberWithSeparator } from "@/utils/formatters";
 
 // Default living cost categories
 const COST_CATEGORIES = [
@@ -36,12 +35,14 @@ export default function LivingCostCalculator() {
   
   // Handle customUMR change with useCallback
   const handleCustomUMRChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setCustomUMR(e.target.value);
+    const rawValue = e.target.value.replace(/\./g, '');
+    setCustomUMR(rawValue);
   }, []);
   
   // Handle cost changes with useCallback
   const handleCostChange = useCallback((category: string, value: string) => {
-    const newValue = value === "" ? 0 : Number(value);
+    const rawValue = value.replace(/\./g, '');
+    const newValue = rawValue === '' ? 0 : Number(rawValue);
     setCosts(prevCosts => ({
       ...prevCosts,
       [category]: newValue,
@@ -109,12 +110,11 @@ export default function LivingCostCalculator() {
           {location === "custom" && (
             <NeumorphicInput
               label="UMR Daerahmu"
-              type="number"
-              value={customUMR}
+              type="text"
+              value={formatNumberWithSeparator(customUMR)}
               onChange={handleCustomUMRChange}
               prefix="Rp"
               error={customUMRError}
-              min={0}
               className="mb-4"
             />
           )}
@@ -130,11 +130,10 @@ export default function LivingCostCalculator() {
                 <div className="flex-1">
                   <NeumorphicInput
                     label={category.name}
-                    type="number"
-                    value={costs[category.id]}
+                    type="text"
+                    value={formatNumberWithSeparator(costs[category.id])}
                     onChange={(e) => handleCostChange(category.id, e.target.value)}
                     prefix="Rp"
-                    min={0}
                   />
                 </div>
               </div>

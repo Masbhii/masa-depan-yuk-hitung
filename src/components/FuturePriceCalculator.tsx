@@ -1,8 +1,7 @@
-
 import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput, NeumorphicTabs, NeumorphicButton } from "@/components/ui/skeuomorphic";
 import { calculateFutureValue, INFLATION_SCENARIOS } from "@/utils/calculators";
-import { formatRupiah, formatPercentage } from "@/utils/formatters";
+import { formatRupiah, formatPercentage, formatNumberWithSeparator } from "@/utils/formatters";
 
 export default function FuturePriceCalculator() {
   const [currentPrice, setCurrentPrice] = useState<string>("100000");
@@ -11,12 +10,10 @@ export default function FuturePriceCalculator() {
   const [customRate, setCustomRate] = useState<string>("4.0");
   const [activeTab, setActiveTab] = useState<"scenarios" | "custom">("scenarios");
   
-  // Error states
   const [priceError, setPriceError] = useState<string>("");
   const [yearsError, setYearsError] = useState<string>("");
   const [rateError, setRateError] = useState<string>("");
 
-  // Handle input validation
   const validateInputs = useCallback(() => {
     let isValid = true;
     
@@ -44,7 +41,6 @@ export default function FuturePriceCalculator() {
     return isValid;
   }, [currentPrice, years, customRate, activeTab]);
 
-  // Calculate future prices for different scenarios
   const calculateResults = useCallback(() => {
     if (!validateInputs()) return null;
     
@@ -65,22 +61,19 @@ export default function FuturePriceCalculator() {
     }
   }, [currentPrice, years, customRate, activeTab, validateInputs]);
 
-  // Memoize results to prevent recalculation on every render
   const results = useMemo(() => calculateResults(), [calculateResults]);
 
-  // Handle scenario button clicks
   const handleScenarioClick = useCallback((scenario: "LOW" | "MEDIUM" | "HIGH") => {
     setScenarioType(scenario);
   }, []);
 
-  // Handle tab change
   const handleTabChange = useCallback((id: string) => {
     setActiveTab(id as "scenarios" | "custom");
   }, []);
 
-  // Handle input changes with useCallback
   const handlePriceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentPrice(e.target.value);
+    const rawValue = e.target.value.replace(/\./g, '');
+    setCurrentPrice(rawValue);
   }, []);
 
   const handleYearsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,12 +95,11 @@ export default function FuturePriceCalculator() {
           <div className="space-y-4">
             <NeumorphicInput
               label="Harga Saat Ini"
-              type="number"
-              value={currentPrice}
+              type="text"
+              value={formatNumberWithSeparator(currentPrice)}
               onChange={handlePriceChange}
               prefix="Rp"
               error={priceError}
-              min={0}
             />
             
             <NeumorphicInput
