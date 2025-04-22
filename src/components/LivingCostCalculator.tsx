@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput } from "@/components/ui/skeuomorphic";
 import { UMR_DATA, calculatePercentageDifference } from "@/utils/calculators";
 import { formatRupiah, formatPercentage } from "@/utils/formatters";
@@ -29,35 +29,50 @@ export default function LivingCostCalculator() {
   // Error state
   const [customUMRError, setCustomUMRError] = useState<string>("");
   
-  // Handle cost changes
-  const handleCostChange = (category: string, value: string) => {
+  // Handle location change with useCallback
+  const handleLocationChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLocation(e.target.value);
+  }, []);
+  
+  // Handle customUMR change with useCallback
+  const handleCustomUMRChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomUMR(e.target.value);
+  }, []);
+  
+  // Handle cost changes with useCallback
+  const handleCostChange = useCallback((category: string, value: string) => {
     const newValue = value === "" ? 0 : Number(value);
-    setCosts({
-      ...costs,
+    setCosts(prevCosts => ({
+      ...prevCosts,
       [category]: newValue,
-    });
-  };
+    }));
+  }, []);
   
-  // Calculate total living cost
-  const totalLivingCost = Object.values(costs).reduce((sum, cost) => sum + cost, 0);
+  // Calculate total living cost with useMemo
+  const totalLivingCost = useMemo(() => {
+    return Object.values(costs).reduce((sum, cost) => sum + cost, 0);
+  }, [costs]);
   
-  // Get UMR value based on location or custom input
-  const getUMRValue = () => {
+  // Get UMR value based on location or custom input with useMemo
+  const umrValue = useMemo(() => {
     if (location === "custom") {
       const value = Number(customUMR);
       return isNaN(value) ? 0 : value;
     }
     return UMR_DATA[location] || 0;
-  };
+  }, [location, customUMR]);
   
-  const umrValue = getUMRValue();
+  // Calculate the percentage difference between UMR and living cost with useMemo
+  const umrVsCostDifference = useMemo(() => {
+    return umrValue - totalLivingCost;
+  }, [umrValue, totalLivingCost]);
   
-  // Calculate the percentage difference between UMR and living cost
-  const umrVsCostDifference = umrValue - totalLivingCost;
-  const percentageDifference = calculatePercentageDifference(umrValue, totalLivingCost);
+  const percentageDifference = useMemo(() => {
+    return calculatePercentageDifference(umrValue, totalLivingCost);
+  }, [umrValue, totalLivingCost]);
   
-  // Calculate personal inflation
-  const calculatePersonalInflation = () => {
+  // Calculate personal inflation with useMemo
+  const personalInflation = useMemo(() => {
     // In a real app, this would compare against historical cost data
     // For now, we'll use a simplified estimate based on total cost vs average UMR
     const averageUMR = Object.values(UMR_DATA).reduce((sum, umr) => sum + umr, 0) / Object.keys(UMR_DATA).length;
@@ -65,7 +80,7 @@ export default function LivingCostCalculator() {
     
     // Cap at reasonable values for demonstration
     return Math.max(Math.min(personalInflation, 15), 1.5);
-  };
+  }, [totalLivingCost]);
   
   return (
     <NeumorphicCard className="w-full mb-6">
@@ -81,7 +96,7 @@ export default function LivingCostCalculator() {
           <div className="mb-4">
             <select
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={handleLocationChange}
               className="w-full py-3 px-4 bg-white rounded-lg text-gray-800 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05),_inset_0_1px_2px_rgba(0,0,0,0.1)] focus:outline-none focus:ring-2 focus:ring-purple-300"
             >
               {Object.keys(UMR_DATA).map(city => (
@@ -96,7 +111,7 @@ export default function LivingCostCalculator() {
               label="UMR Daerahmu"
               type="number"
               value={customUMR}
-              onChange={(e) => setCustomUMR(e.target.value)}
+              onChange={handleCustomUMRChange}
               prefix="Rp"
               error={customUMRError}
               min={0}
@@ -182,7 +197,7 @@ export default function LivingCostCalculator() {
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-medium">Tingkat Inflasi Pribadimu</h4>
                   <p className="font-bold text-xl text-finansial-orange">
-                    {formatPercentage(calculatePersonalInflation() / 100, 1)}
+                    {formatPercentage(personalInflation / 100, 1)}
                   </p>
                 </div>
                 
