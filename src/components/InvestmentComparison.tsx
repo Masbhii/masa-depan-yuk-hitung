@@ -1,245 +1,268 @@
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { NeumorphicCard, NeumorphicInput, NeumorphicButton, GlassCard } from "@/components/ui/skeuomorphic";
-import { calculateInvestmentReturn, AssetType } from "@/utils/calculators";
+import { useState, useCallback, useMemo } from "react";
+import { NeumorphicCard, NeumorphicInput, NeumorphicTabs } from "@/components/ui/skeuomorphic";
+import { calculateInvestmentReturn, AssetType, ASSET_RETURNS } from "@/utils/calculators";
 import { formatRupiah, formatPercentage } from "@/utils/formatters";
-
-// Asset choices
-const ASSETS = [
-  { id: "crypto", name: "Bitcoin", type: "crypto", iconColor: "text-finansial-orange" },
-  { id: "stocks", name: "BBCA", type: "stocks", iconColor: "text-finansial-blue" },
-  { id: "commodity", name: "Emas", type: "commodity", iconColor: "text-finansial-yellow" },
-];
 
 export default function InvestmentComparison() {
   const currentYear = new Date().getFullYear();
-  const [amount, setAmount] = useState<string>("1000000");
+  const [initialAmount, setInitialAmount] = useState<string>("10000000"); 
   const [startYear, setStartYear] = useState<string>("2015");
-  const [selectedAsset, setSelectedAsset] = useState<AssetType>("stocks");
-  const [results, setResults] = useState<Record<AssetType, number>>({
-    crypto: 0,
-    stocks: 0,
-    commodity: 0,
-  });
+  const [activeTab, setActiveTab] = useState<AssetType>("stocks");
+  
+  // Error states
   const [amountError, setAmountError] = useState<string>("");
   const [yearError, setYearError] = useState<string>("");
-  const [showAllResults, setShowAllResults] = useState(false);
-
-  // Validate inputs - wrapped in useCallback to prevent recreation on every render
+  
+  // Handle input changes with useCallback
+  const handleAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInitialAmount(e.target.value);
+  }, []);
+  
+  const handleYearChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStartYear(e.target.value);
+  }, []);
+  
+  const handleTabChange = useCallback((id: string) => {
+    setActiveTab(id as AssetType);
+  }, []);
+  
+  // Validate inputs with useCallback
   const validateInputs = useCallback(() => {
     let isValid = true;
     
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      setAmountError("Nominal investasi harus berupa angka positif");
+    if (!initialAmount || isNaN(Number(initialAmount)) || Number(initialAmount) <= 0) {
+      setAmountError("Investasi awal harus berupa angka positif");
       isValid = false;
     } else {
       setAmountError("");
     }
     
-    const year = Number(startYear);
-    if (!startYear || isNaN(year) || year < 2010 || year >= currentYear) {
-      setYearError(`Tahun harus antara 2010-${currentYear - 1}`);
+    if (!startYear || isNaN(Number(startYear))) {
+      setYearError("Pilih tahun mulai investasi");
       isValid = false;
     } else {
       setYearError("");
     }
     
     return isValid;
-  }, [amount, startYear, currentYear]);
-
-  // Calculate investment returns - wrapped in useEffect with proper dependencies
-  useEffect(() => {
-    if (!validateInputs()) return;
+  }, [initialAmount, startYear]);
+  
+  // Get available years for dropdown using useMemo
+  const availableYears = useMemo(() => {
+    const assetTypeData = ASSET_RETURNS[activeTab];
+    return Object.keys(assetTypeData)
+      .map(Number)
+      .filter(year => year < currentYear)
+      .sort((a, b) => b - a); // Sort descending
+  }, [activeTab, currentYear]);
+  
+  // Calculate results with useCallback
+  const calculateResults = useCallback(() => {
+    if (!validateInputs()) return null;
     
-    const initialAmount = Number(amount);
+    const amount = Number(initialAmount);
     const year = Number(startYear);
     
-    // Calculate returns for all asset types
-    const newResults = {
-      crypto: calculateInvestmentReturn(initialAmount, "crypto", year),
-      stocks: calculateInvestmentReturn(initialAmount, "stocks", year),
-      commodity: calculateInvestmentReturn(initialAmount, "commodity", year),
+    // Calculate returns for each asset type
+    const results = {
+      stocks: calculateInvestmentReturn(amount, "stocks", year),
+      crypto: calculateInvestmentReturn(amount, "crypto", year),
+      commodity: calculateInvestmentReturn(amount, "commodity", year)
     };
     
-    setResults(newResults);
-  }, [amount, startYear, validateInputs]);
-
-  // Get the ROI percentage - wrapped in useCallback
-  const calculateROI = useCallback((currentValue: number) => {
-    const initialAmount = Number(amount);
-    return ((currentValue / initialAmount) - 1) * 100;
-  }, [amount]);
-
-  // Get the leading asset (highest return) - memoized with useMemo
-  const leadingAsset = useMemo(() => {
-    let highest: { type: AssetType; value: number } = { type: "stocks", value: 0 };
-    
-    Object.entries(results).forEach(([type, value]) => {
-      if (value > highest.value) {
-        highest = { type: type as AssetType, value };
-      }
-    });
-    
-    return highest;
-  }, [results]);
-
-  // Event handlers with useCallback
-  const handleAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setAmount(e.target.value);
-  }, []);
-
-  const handleStartYearChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setStartYear(e.target.value);
-  }, []);
-
-  const handleAssetSelection = useCallback((assetType: AssetType) => {
-    setSelectedAsset(assetType);
-  }, []);
-
-  const toggleShowAllResults = useCallback(() => {
-    setShowAllResults(prev => !prev);
-  }, []);
-
+    return {
+      results,
+      percentages: {
+        stocks: (results.stocks / amount - 1) * 100,
+        crypto: (results.crypto / amount - 1) * 100,
+        commodity: (results.commodity / amount - 1) * 100
+      },
+      yearDifference: currentYear - year
+    };
+  }, [initialAmount, startYear, validateInputs, currentYear]);
+  
+  // Memoize results to prevent recalculation on each render
+  const results = useMemo(() => calculateResults(), [calculateResults]);
+  
+  // Get asset returns for the selected type with useMemo
+  const assetReturnsData = useMemo(() => {
+    const data = ASSET_RETURNS[activeTab];
+    return Object.keys(data)
+      .map(Number)
+      .filter(year => year >= Number(startYear) && year < currentYear)
+      .sort((a, b) => a - b)
+      .map(year => ({
+        year,
+        return: data[year]
+      }));
+  }, [activeTab, startYear, currentYear]);
+  
   return (
     <NeumorphicCard className="w-full mb-6">
-      <div className="flex flex-col space-y-4">
-        <h2 className="text-xl font-bold">Komparasi Investasi</h2>
-        <p className="text-sm text-gray-600">
-          Simulasikan nilai investasimu pada berbagai aset dari tahun lalu hingga sekarang
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <NeumorphicInput
-            label="Nominal Investasi"
-            type="number"
-            value={amount}
-            onChange={handleAmountChange}
-            prefix="Rp"
-            error={amountError}
-            min={1000}
-          />
-          
-          <NeumorphicInput
-            label="Tahun Investasi"
-            type="number"
-            value={startYear}
-            onChange={handleStartYearChange}
-            error={yearError}
-            min={2010}
-            max={currentYear - 1}
-          />
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Aset</label>
-            <div className="grid grid-cols-3 gap-2">
-              {ASSETS.map((asset) => (
-                <NeumorphicButton
-                  key={asset.id}
-                  onClick={() => handleAssetSelection(asset.id as AssetType)}
-                  active={selectedAsset === asset.id}
-                  className="text-sm py-2"
-                >
-                  <span className={`${asset.iconColor} mr-1`}>●</span> {asset.name}
-                </NeumorphicButton>
-              ))}
+      <h2 className="text-xl font-bold mb-4">Komparasi Investasi</h2>
+      <p className="text-sm text-gray-600 mb-4">
+        Bandingkan kinerja historis berbagai aset investasi
+      </p>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <div className="space-y-4">
+            <NeumorphicInput
+              label="Investasi Awal"
+              type="number"
+              value={initialAmount}
+              onChange={handleAmountChange}
+              prefix="Rp"
+              error={amountError}
+              min={10000}
+            />
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Mulai Investasi</label>
+              <select
+                value={startYear}
+                onChange={handleYearChange}
+                className="w-full py-3 px-4 bg-white rounded-lg text-gray-800 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05),_inset_0_1px_2px_rgba(0,0,0,0.1)] focus:outline-none focus:ring-2 focus:ring-purple-300"
+              >
+                <option value="">Pilih Tahun</option>
+                {availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              {yearError && <p className="mt-1 text-sm text-finansial-red">{yearError}</p>}
+            </div>
+            
+            <div className="mt-4">
+              <NeumorphicTabs
+                tabs={[
+                  { id: "stocks", label: "Saham" },
+                  { id: "crypto", label: "Crypto" },
+                  { id: "commodity", label: "Komoditas" }
+                ]}
+                activeTab={activeTab}
+                onChange={handleTabChange}
+              />
+            </div>
+            
+            <div className="mt-4 bg-gray-50 rounded-lg p-4">
+              <h3 className="font-medium mb-2">Return {activeTab === "stocks" ? "Saham" : activeTab === "crypto" ? "Crypto" : "Komoditas"} Tahunan</h3>
+              
+              {startYear && !yearError ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {assetReturnsData.slice(0, 9).map(({ year, return: returnValue }) => (
+                    <div key={year} className="mb-1">
+                      <span className="font-medium">{year}:</span>{' '}
+                      <span className={returnValue >= 0 ? "text-finansial-green" : "text-finansial-red"}>
+                        {returnValue >= 0 ? '+' : ''}{returnValue}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Pilih tahun untuk melihat data return</p>
+              )}
             </div>
           </div>
         </div>
         
-        {/* Results Section */}
-        {validateInputs() && (
-          <div className="mt-4">
-            <div className="mb-4 flex justify-between items-center">
-              <h3 className="font-semibold">Hasil Investasi</h3>
-              <button 
-                onClick={toggleShowAllResults}
-                className="text-sm font-medium text-purple-600 hover:text-purple-800 transition-colors"
-              >
-                {showAllResults ? 'Tampilkan Terpilih' : 'Bandingkan Semua'}
-              </button>
-            </div>
-            
-            {showAllResults ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {ASSETS.map((asset) => {
-                  const assetType = asset.id as AssetType;
-                  const value = results[assetType];
-                  const roi = calculateROI(value);
-                  const isHighest = leadingAsset.type === assetType;
+        <div className="flex flex-col">
+          <h3 className="text-sm font-medium text-gray-500 mb-3">Hasil Investasi</h3>
+          
+          {results ? (
+            <div className="flex-1 bg-gradient-to-br from-purple-50 to-white rounded-lg p-6 flex flex-col justify-center shadow-inner">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Jika investasi {formatRupiah(Number(initialAmount))} di {startYear}:</h4>
                   
-                  return (
-                    <GlassCard 
-                      key={asset.id}
-                      className={`${isHighest ? 'border-2 border-finansial-green' : ''}`}
-                      colorClass={
-                        assetType === "crypto" 
-                          ? "from-finansial-orange/10 to-white/90" 
-                          : assetType === "stocks" 
-                            ? "from-finansial-blue/10 to-white/90" 
-                            : "from-finansial-yellow/10 to-white/90"
-                      }
-                    >
-                      <div className="flex flex-col">
-                        <div className="flex justify-between items-center mb-2">
-                          <h4 className="font-medium">{asset.name}</h4>
-                          {isHighest && (
-                            <span className="bg-finansial-green text-white text-xs px-2 py-0.5 rounded-full">
-                              Terbaik
-                            </span>
-                          )}
+                  <div className="mt-3 space-y-4">
+                    <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-finansial-blue rounded-full flex items-center justify-center text-white mr-3">
+                          📈
                         </div>
-                        <p className="text-2xl font-bold">{formatRupiah(value)}</p>
-                        <div className="flex items-center mt-1">
-                          <span className={`text-sm font-medium ${roi >= 0 ? 'text-finansial-green' : 'text-finansial-red'}`}>
-                            {roi >= 0 ? '+' : ''}{formatPercentage(roi / 100, 0)}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-2">dari {formatRupiah(Number(amount))}</span>
+                        <div>
+                          <p className="font-medium">Saham</p>
+                          <p className="text-sm text-gray-500">IDX Composite</p>
                         </div>
                       </div>
-                    </GlassCard>
-                  );
-                })}
-              </div>
-            ) : (
-              <GlassCard
-                colorClass={
-                  selectedAsset === "crypto" 
-                    ? "from-finansial-orange/10 to-white/90" 
-                    : selectedAsset === "stocks" 
-                      ? "from-finansial-blue/10 to-white/90" 
-                      : "from-finansial-yellow/10 to-white/90"
-                }
-              >
-                <div className="flex flex-col md:flex-row justify-between">
-                  <div>
-                    <h4 className="font-medium mb-1">
-                      {ASSETS.find(asset => asset.id === selectedAsset)?.name}
-                    </h4>
-                    <p className="text-3xl font-bold">
-                      {formatRupiah(results[selectedAsset])}
-                    </p>
-                    <div className="flex items-center mt-1">
-                      <span className={`text-sm font-medium ${calculateROI(results[selectedAsset]) >= 0 ? 'text-finansial-green' : 'text-finansial-red'}`}>
-                        {calculateROI(results[selectedAsset]) >= 0 ? '+' : ''}{formatPercentage(calculateROI(results[selectedAsset]) / 100, 0)}
-                      </span>
-                      <span className="text-xs text-gray-500 ml-2">dari {formatRupiah(Number(amount))}</span>
+                      <div className="text-right">
+                        <p className="font-bold text-lg">{formatRupiah(results.results.stocks)}</p>
+                        <p className={`text-sm ${results.percentages.stocks >= 0 ? "text-finansial-green" : "text-finansial-red"}`}>
+                          {results.percentages.stocks >= 0 ? "+" : ""}{formatPercentage(results.percentages.stocks / 100, 0)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-finansial-orange rounded-full flex items-center justify-center text-white mr-3">
+                          🪙
+                        </div>
+                        <div>
+                          <p className="font-medium">Crypto</p>
+                          <p className="text-sm text-gray-500">Bitcoin & Altcoins</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg">{formatRupiah(results.results.crypto)}</p>
+                        <p className={`text-sm ${results.percentages.crypto >= 0 ? "text-finansial-green" : "text-finansial-red"}`}>
+                          {results.percentages.crypto >= 0 ? "+" : ""}{formatPercentage(results.percentages.crypto / 100, 0)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-finansial-green rounded-full flex items-center justify-center text-white mr-3">
+                          🧩
+                        </div>
+                        <div>
+                          <p className="font-medium">Komoditas</p>
+                          <p className="text-sm text-gray-500">Emas, Perak, dll</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg">{formatRupiah(results.results.commodity)}</p>
+                        <p className={`text-sm ${results.percentages.commodity >= 0 ? "text-finansial-green" : "text-finansial-red"}`}>
+                          {results.percentages.commodity >= 0 ? "+" : ""}{formatPercentage(results.percentages.commodity / 100, 0)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="mt-4 md:mt-0 md:text-right">
-                    <p className="text-sm text-gray-500">Nilai investasi sejak {startYear}</p>
-                    <p className="text-lg mt-1">
-                      {formatRupiah(Number(amount))} → {formatRupiah(results[selectedAsset])}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {(currentYear - Number(startYear))} tahun performa investasi
-                    </p>
-                  </div>
                 </div>
-              </GlassCard>
-            )}
-          </div>
-        )}
+                
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-sm text-gray-700">
+                    Dalam {results.yearDifference} tahun, investasi terbaik adalah{' '}
+                    <span className="font-bold">
+                      {results.percentages.stocks > results.percentages.crypto && results.percentages.stocks > results.percentages.commodity
+                        ? "Saham"
+                        : results.percentages.crypto > results.percentages.stocks && results.percentages.crypto > results.percentages.commodity
+                          ? "Crypto"
+                          : "Komoditas"
+                      }
+                    </span>{' '}
+                    dengan return {formatPercentage(
+                      Math.max(
+                        results.percentages.stocks,
+                        results.percentages.crypto,
+                        results.percentages.commodity
+                      ) / 100,
+                      0
+                    )}.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center bg-gray-50 rounded-lg p-6">
+              <p className="text-gray-500 text-center">
+                Masukkan data yang valid untuk melihat hasil investasi
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </NeumorphicCard>
   );
