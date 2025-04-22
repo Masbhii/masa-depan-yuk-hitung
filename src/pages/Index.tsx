@@ -1,5 +1,5 @@
-
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { NeumorphicTabs } from "@/components/ui/skeuomorphic";
 import InflationInfoCard from "@/components/InflationInfoCard";
 import FuturePriceCalculator from "@/components/FuturePriceCalculator";
@@ -20,7 +20,7 @@ export default function Index() {
   ];
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white pb-10">
+    <div className="min-h-screen flex flex-col">
       <header className="bg-white shadow-md py-4 mb-6">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
@@ -28,12 +28,16 @@ export default function Index() {
               <h1 className="text-3xl font-bold text-purple-600">BerapaNanti?</h1>
               <p className="text-gray-600">Bantu kamu tahu harga masa depan!</p>
             </div>
-            <InflationInfoCard />
+            <nav className="flex items-center gap-6">
+              <Link to="/" className="text-gray-700 hover:text-purple-600">Beranda</Link>
+              <Link to="/about" className="text-gray-700 hover:text-purple-600">Tentang</Link>
+              <Link to="/articles" className="text-gray-700 hover:text-purple-600">Artikel</Link>
+            </nav>
           </div>
         </div>
       </header>
       
-      <main className="container mx-auto px-4">
+      <main className="container mx-auto px-4 flex-grow">
         <div className="mb-6">
           <NeumorphicTabs
             tabs={tabs}
@@ -88,7 +92,7 @@ export default function Index() {
         </div>
       </main>
       
-      <footer className="mt-12 py-8 bg-purple-900 text-white">
+      <footer className="mt-auto py-8 bg-purple-900 text-white">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
