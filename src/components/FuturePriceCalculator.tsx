@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { NeumorphicCard, NeumorphicInput, NeumorphicTabs, NeumorphicButton } from "@/components/ui/skeuomorphic";
 import { calculateFutureValue, INFLATION_SCENARIOS } from "@/utils/calculators";
 import { formatRupiah, formatPercentage } from "@/utils/formatters";
@@ -17,7 +17,7 @@ export default function FuturePriceCalculator() {
   const [rateError, setRateError] = useState<string>("");
 
   // Handle input validation
-  const validateInputs = () => {
+  const validateInputs = useCallback(() => {
     let isValid = true;
     
     if (!currentPrice || isNaN(Number(currentPrice)) || Number(currentPrice) <= 0) {
@@ -42,10 +42,10 @@ export default function FuturePriceCalculator() {
     }
     
     return isValid;
-  };
+  }, [currentPrice, years, customRate, activeTab]);
 
   // Calculate future prices for different scenarios
-  const calculateResults = () => {
+  const calculateResults = useCallback(() => {
     if (!validateInputs()) return null;
     
     const price = Number(currentPrice);
@@ -63,14 +63,14 @@ export default function FuturePriceCalculator() {
       const inflation = Number(customRate);
       return calculateFutureValue(price, yearCount, inflation);
     }
-  };
+  }, [currentPrice, years, customRate, activeTab, validateInputs]);
 
   const results = calculateResults();
 
   // Handle scenario button clicks
-  const handleScenarioClick = (scenario: "LOW" | "MEDIUM" | "HIGH") => {
+  const handleScenarioClick = useCallback((scenario: "LOW" | "MEDIUM" | "HIGH") => {
     setScenarioType(scenario);
-  };
+  }, []);
 
   return (
     <NeumorphicCard className="w-full mb-6">
