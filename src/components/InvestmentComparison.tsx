@@ -1,7 +1,10 @@
+
 import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput, NeumorphicTabs, NeumorphicButton } from "@/components/ui/skeuomorphic";
 import { calculateInvestmentReturn, AssetType, ASSET_RETURNS } from "@/utils/calculators";
 import { formatRupiah, formatPercentage, formatNumberWithSeparator } from "@/utils/formatters";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function InvestmentComparison() {
   const currentYear = new Date().getFullYear();
@@ -271,3 +274,4 @@ export default function InvestmentComparison() {
     </NeumorphicCard>
   );
 }
+
