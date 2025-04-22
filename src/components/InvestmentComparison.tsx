@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput, NeumorphicButton, GlassCard } from "@/components/ui/skeuomorphic";
 import { calculateInvestmentReturn, AssetType } from "@/utils/calculators";
 import { formatRupiah, formatPercentage } from "@/utils/formatters";
@@ -25,8 +25,8 @@ export default function InvestmentComparison() {
   const [yearError, setYearError] = useState<string>("");
   const [showAllResults, setShowAllResults] = useState(false);
 
-  // Validate inputs
-  const validateInputs = () => {
+  // Validate inputs - wrapped in useCallback to prevent recreation on every render
+  const validateInputs = useCallback(() => {
     let isValid = true;
     
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -45,9 +45,9 @@ export default function InvestmentComparison() {
     }
     
     return isValid;
-  };
+  }, [amount, startYear, currentYear]);
 
-  // Calculate investment returns
+  // Calculate investment returns - wrapped in useEffect with proper dependencies
   useEffect(() => {
     if (!validateInputs()) return;
     
@@ -62,16 +62,16 @@ export default function InvestmentComparison() {
     };
     
     setResults(newResults);
-  }, [amount, startYear]);
+  }, [amount, startYear, validateInputs]);
 
-  // Get the ROI percentage
-  const calculateROI = (currentValue: number) => {
+  // Get the ROI percentage - wrapped in useCallback
+  const calculateROI = useCallback((currentValue: number) => {
     const initialAmount = Number(amount);
     return ((currentValue / initialAmount) - 1) * 100;
-  };
+  }, [amount]);
 
-  // Get the leading asset (highest return)
-  const getLeadingAsset = () => {
+  // Get the leading asset (highest return) - memoized with useMemo
+  const leadingAsset = useMemo(() => {
     let highest: { type: AssetType; value: number } = { type: "stocks", value: 0 };
     
     Object.entries(results).forEach(([type, value]) => {
@@ -81,9 +81,24 @@ export default function InvestmentComparison() {
     });
     
     return highest;
-  };
+  }, [results]);
 
-  const leadingAsset = getLeadingAsset();
+  // Event handlers with useCallback
+  const handleAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setAmount(e.target.value);
+  }, []);
+
+  const handleStartYearChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setStartYear(e.target.value);
+  }, []);
+
+  const handleAssetSelection = useCallback((assetType: AssetType) => {
+    setSelectedAsset(assetType);
+  }, []);
+
+  const toggleShowAllResults = useCallback(() => {
+    setShowAllResults(prev => !prev);
+  }, []);
 
   return (
     <NeumorphicCard className="w-full mb-6">
@@ -98,7 +113,7 @@ export default function InvestmentComparison() {
             label="Nominal Investasi"
             type="number"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={handleAmountChange}
             prefix="Rp"
             error={amountError}
             min={1000}
@@ -108,7 +123,7 @@ export default function InvestmentComparison() {
             label="Tahun Investasi"
             type="number"
             value={startYear}
-            onChange={(e) => setStartYear(e.target.value)}
+            onChange={handleStartYearChange}
             error={yearError}
             min={2010}
             max={currentYear - 1}
@@ -120,7 +135,7 @@ export default function InvestmentComparison() {
               {ASSETS.map((asset) => (
                 <NeumorphicButton
                   key={asset.id}
-                  onClick={() => setSelectedAsset(asset.id as AssetType)}
+                  onClick={() => handleAssetSelection(asset.id as AssetType)}
                   active={selectedAsset === asset.id}
                   className="text-sm py-2"
                 >
@@ -137,7 +152,7 @@ export default function InvestmentComparison() {
             <div className="mb-4 flex justify-between items-center">
               <h3 className="font-semibold">Hasil Investasi</h3>
               <button 
-                onClick={() => setShowAllResults(!showAllResults)}
+                onClick={toggleShowAllResults}
                 className="text-sm font-medium text-purple-600 hover:text-purple-800 transition-colors"
               >
                 {showAllResults ? 'Tampilkan Terpilih' : 'Bandingkan Semua'}
