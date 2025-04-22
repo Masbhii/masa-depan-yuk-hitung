@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput, NeumorphicTabs, NeumorphicButton } from "@/components/ui/skeuomorphic";
 import { calculateFutureValue, INFLATION_SCENARIOS } from "@/utils/calculators";
 import { formatRupiah, formatPercentage } from "@/utils/formatters";
@@ -65,11 +65,30 @@ export default function FuturePriceCalculator() {
     }
   }, [currentPrice, years, customRate, activeTab, validateInputs]);
 
-  const results = calculateResults();
+  // Memoize results to prevent recalculation on every render
+  const results = useMemo(() => calculateResults(), [calculateResults]);
 
   // Handle scenario button clicks
   const handleScenarioClick = useCallback((scenario: "LOW" | "MEDIUM" | "HIGH") => {
     setScenarioType(scenario);
+  }, []);
+
+  // Handle tab change
+  const handleTabChange = useCallback((id: string) => {
+    setActiveTab(id as "scenarios" | "custom");
+  }, []);
+
+  // Handle input changes with useCallback
+  const handlePriceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentPrice(e.target.value);
+  }, []);
+
+  const handleYearsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setYears(e.target.value);
+  }, []);
+
+  const handleCustomRateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomRate(e.target.value);
   }, []);
 
   return (
@@ -85,7 +104,7 @@ export default function FuturePriceCalculator() {
               label="Harga Saat Ini"
               type="number"
               value={currentPrice}
-              onChange={(e) => setCurrentPrice(e.target.value)}
+              onChange={handlePriceChange}
               prefix="Rp"
               error={priceError}
               min={0}
@@ -95,7 +114,7 @@ export default function FuturePriceCalculator() {
               label="Berapa Tahun Lagi?"
               type="number"
               value={years}
-              onChange={(e) => setYears(e.target.value)}
+              onChange={handleYearsChange}
               suffix="tahun"
               error={yearsError}
               min={1}
@@ -110,7 +129,7 @@ export default function FuturePriceCalculator() {
                   { id: "custom", label: "Kustom" }
                 ]}
                 activeTab={activeTab}
-                onChange={(id) => setActiveTab(id as "scenarios" | "custom")}
+                onChange={handleTabChange}
               />
             </div>
             
@@ -143,7 +162,7 @@ export default function FuturePriceCalculator() {
                 label="Persentase Inflasi"
                 type="number"
                 value={customRate}
-                onChange={(e) => setCustomRate(e.target.value)}
+                onChange={handleCustomRateChange}
                 suffix="%"
                 error={rateError}
                 min={0}
