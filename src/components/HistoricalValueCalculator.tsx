@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput } from "@/components/ui/skeuomorphic";
 import { calculateInflationAdjustedValue, INFLATION_RATES } from "@/utils/calculators";
-import { formatRupiah, formatPercentage } from "@/utils/formatters";
+import { formatRupiah, formatPercentage, formatNumberWithSeparator } from "@/utils/formatters";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function HistoricalValueCalculator() {
@@ -49,7 +49,8 @@ export default function HistoricalValueCalculator() {
   const results = useMemo(() => calculateResults(), [calculateResults]);
   
   const handleHistoricalValueChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setHistoricalValue(e.target.value);
+    const rawValue = e.target.value.replace(/\./g, '');
+    setHistoricalValue(rawValue);
   }, []);
   
   const handlePurchaseYearChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -82,12 +83,11 @@ export default function HistoricalValueCalculator() {
           <div className="space-y-4">
             <NeumorphicInput
               label="Nilai Rupiah di Masa Lalu"
-              type="number"
-              value={historicalValue}
+              type="text"
+              value={formatNumberWithSeparator(historicalValue)}
               onChange={handleHistoricalValueChange}
               prefix="Rp"
               error={historicalValueError}
-              min={1000}
               className="[&::-webkit-inner-spin-button]:appearance-none"
             />
             
