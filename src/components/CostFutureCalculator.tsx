@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput, NeumorphicTabs } from "@/components/ui/skeuomorphic";
 import { calculateFutureValue, INFLATION_SCENARIOS } from "@/utils/calculators";
 import { formatRupiah } from "@/utils/formatters";
@@ -24,8 +24,8 @@ export default function CostFutureCalculator() {
   const [costError, setCostError] = useState<string>("");
   const [yearsError, setYearsError] = useState<string>("");
 
-  // Handle goal selection
-  const handleGoalChange = (goalId: string) => {
+  // Handle goal selection with useCallback
+  const handleGoalChange = useCallback((goalId: string) => {
     setSelectedGoal(goalId);
     
     // Set default cost based on selected goal
@@ -35,10 +35,23 @@ export default function CostFutureCalculator() {
         setCurrentCost(goal.defaultCost.toString());
       }
     }
-  };
+  }, []);
 
-  // Validate inputs
-  const validateInputs = () => {
+  // Handle input changes with useCallback
+  const handleCostChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentCost(e.target.value);
+  }, []);
+
+  const handleYearsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setYears(e.target.value);
+  }, []);
+
+  const handleCustomDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomDescription(e.target.value);
+  }, []);
+
+  // Validate inputs with useCallback
+  const validateInputs = useCallback(() => {
     let isValid = true;
     
     if (!currentCost || isNaN(Number(currentCost)) || Number(currentCost) <= 0) {
@@ -56,10 +69,10 @@ export default function CostFutureCalculator() {
     }
     
     return isValid;
-  };
+  }, [currentCost, years]);
 
-  // Calculate future costs for each inflation scenario
-  const calculateResults = () => {
+  // Calculate future costs with useCallback
+  const calculateResults = useCallback(() => {
     if (!validateInputs()) return null;
     
     const cost = Number(currentCost);
@@ -70,14 +83,17 @@ export default function CostFutureCalculator() {
       MEDIUM: calculateFutureValue(cost, yearCount, INFLATION_SCENARIOS.MEDIUM),
       HIGH: calculateFutureValue(cost, yearCount, INFLATION_SCENARIOS.HIGH)
     };
-  };
+  }, [validateInputs, currentCost, years]);
 
-  const results = calculateResults();
+  // Memoize results to prevent recalculation on each render
+  const results = useMemo(() => calculateResults(), [calculateResults]);
 
-  // Get goal information
-  const currentGoal = selectedGoal === "custom" 
-    ? { name: customDescription || "Tujuan Kustom", icon: "🎯" } 
-    : LIFE_GOALS.find(g => g.id === selectedGoal) || LIFE_GOALS[0];
+  // Get goal information with useMemo
+  const currentGoal = useMemo(() => {
+    return selectedGoal === "custom" 
+      ? { name: customDescription || "Tujuan Kustom", icon: "🎯" } 
+      : LIFE_GOALS.find(g => g.id === selectedGoal) || LIFE_GOALS[0];
+  }, [selectedGoal, customDescription]);
 
   return (
     <NeumorphicCard className="w-full mb-6">
@@ -124,7 +140,7 @@ export default function CostFutureCalculator() {
               label="Deskripsi Tujuan"
               type="text"
               value={customDescription}
-              onChange={(e) => setCustomDescription(e.target.value)}
+              onChange={handleCustomDescriptionChange}
               placeholder="Contoh: Beli Laptop Baru"
               className="mb-4"
             />
@@ -135,7 +151,7 @@ export default function CostFutureCalculator() {
               label="Estimasi Biaya Saat Ini"
               type="number"
               value={currentCost}
-              onChange={(e) => setCurrentCost(e.target.value)}
+              onChange={handleCostChange}
               prefix="Rp"
               error={costError}
               min={0}
@@ -145,7 +161,7 @@ export default function CostFutureCalculator() {
               label="Berapa Tahun Lagi?"
               type="number"
               value={years}
-              onChange={(e) => setYears(e.target.value)}
+              onChange={handleYearsChange}
               suffix="tahun"
               error={yearsError}
               min={1}

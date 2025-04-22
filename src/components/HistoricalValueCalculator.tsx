@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput } from "@/components/ui/skeuomorphic";
 import { calculateInflationAdjustedValue, INFLATION_RATES } from "@/utils/calculators";
 import { formatRupiah, formatPercentage } from "@/utils/formatters";
@@ -11,8 +11,8 @@ export default function HistoricalValueCalculator() {
   const [historicalValueError, setHistoricalValueError] = useState<string>("");
   const [yearError, setYearError] = useState<string>("");
   
-  // Function to validate inputs
-  const validateInputs = () => {
+  // Function to validate inputs - wrapped in useCallback to prevent recreation on each render
+  const validateInputs = useCallback(() => {
     let isValid = true;
     
     if (!historicalValue || isNaN(Number(historicalValue)) || Number(historicalValue) <= 0) {
@@ -31,10 +31,10 @@ export default function HistoricalValueCalculator() {
     }
     
     return isValid;
-  };
+  }, [historicalValue, purchaseYear, currentYear]);
   
-  // Calculate current value
-  const calculateResults = () => {
+  // Calculate current value - wrapped in useCallback
+  const calculateResults = useCallback(() => {
     if (!validateInputs()) return null;
     
     const originalValue = Number(historicalValue);
@@ -46,15 +46,27 @@ export default function HistoricalValueCalculator() {
       yearDifference: currentYear - year,
       percentageChange: (calculateInflationAdjustedValue(originalValue, year) / originalValue - 1) * 100
     };
-  };
+  }, [validateInputs, historicalValue, purchaseYear, currentYear]);
   
-  const results = calculateResults();
+  // Memoize results to prevent recalculation on each render
+  const results = useMemo(() => calculateResults(), [calculateResults]);
+  
+  // Event handlers with useCallback
+  const handleHistoricalValueChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setHistoricalValue(e.target.value);
+  }, []);
+  
+  const handlePurchaseYearChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPurchaseYear(e.target.value);
+  }, []);
   
   // Generate years for the dropdown
-  const availableYears = Object.keys(INFLATION_RATES)
-    .map(Number)
-    .filter(year => year < currentYear)
-    .sort((a, b) => b - a); // Sort descending
+  const availableYears = useMemo(() => {
+    return Object.keys(INFLATION_RATES)
+      .map(Number)
+      .filter(year => year < currentYear)
+      .sort((a, b) => b - a); // Sort descending
+  }, [currentYear]);
   
   return (
     <NeumorphicCard className="w-full mb-6">
@@ -70,7 +82,7 @@ export default function HistoricalValueCalculator() {
               label="Nilai Rupiah di Masa Lalu"
               type="number"
               value={historicalValue}
-              onChange={(e) => setHistoricalValue(e.target.value)}
+              onChange={handleHistoricalValueChange}
               prefix="Rp"
               error={historicalValueError}
               min={1000}
@@ -80,7 +92,7 @@ export default function HistoricalValueCalculator() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Pembelian</label>
               <select
                 value={purchaseYear}
-                onChange={(e) => setPurchaseYear(e.target.value)}
+                onChange={handlePurchaseYearChange}
                 className="w-full py-3 px-4 bg-white rounded-lg text-gray-800 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05),_inset_0_1px_2px_rgba(0,0,0,0.1)] focus:outline-none focus:ring-2 focus:ring-purple-300"
               >
                 <option value="">Pilih Tahun</option>
