@@ -1,8 +1,8 @@
-
 import { useState, useCallback, useMemo } from "react";
 import { NeumorphicCard, NeumorphicInput } from "@/components/ui/skeuomorphic";
 import { calculateInflationAdjustedValue, INFLATION_RATES } from "@/utils/calculators";
 import { formatRupiah, formatPercentage } from "@/utils/formatters";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function HistoricalValueCalculator() {
   const currentYear = new Date().getFullYear();
@@ -11,7 +11,6 @@ export default function HistoricalValueCalculator() {
   const [historicalValueError, setHistoricalValueError] = useState<string>("");
   const [yearError, setYearError] = useState<string>("");
   
-  // Function to validate inputs - wrapped in useCallback to prevent recreation on each render
   const validateInputs = useCallback(() => {
     let isValid = true;
     
@@ -33,7 +32,6 @@ export default function HistoricalValueCalculator() {
     return isValid;
   }, [historicalValue, purchaseYear, currentYear]);
   
-  // Calculate current value - wrapped in useCallback
   const calculateResults = useCallback(() => {
     if (!validateInputs()) return null;
     
@@ -48,10 +46,8 @@ export default function HistoricalValueCalculator() {
     };
   }, [validateInputs, historicalValue, purchaseYear, currentYear]);
   
-  // Memoize results to prevent recalculation on each render
   const results = useMemo(() => calculateResults(), [calculateResults]);
   
-  // Event handlers with useCallback
   const handleHistoricalValueChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setHistoricalValue(e.target.value);
   }, []);
@@ -60,12 +56,18 @@ export default function HistoricalValueCalculator() {
     setPurchaseYear(e.target.value);
   }, []);
   
-  // Generate years for the dropdown
   const availableYears = useMemo(() => {
     return Object.keys(INFLATION_RATES)
       .map(Number)
       .filter(year => year < currentYear)
-      .sort((a, b) => b - a); // Sort descending
+      .sort((a, b) => b - a);
+  }, [currentYear]);
+  
+  const inflationData = useMemo(() => {
+    return Object.keys(INFLATION_RATES)
+      .map(Number)
+      .filter(year => year < currentYear)
+      .map(year => ({ year }));
   }, [currentYear]);
   
   return (
@@ -86,6 +88,7 @@ export default function HistoricalValueCalculator() {
               prefix="Rp"
               error={historicalValueError}
               min={1000}
+              className="[&::-webkit-inner-spin-button]:appearance-none"
             />
             
             <div>
@@ -105,21 +108,16 @@ export default function HistoricalValueCalculator() {
             
             <div className="p-4 bg-purple-50 rounded-lg mt-4">
               <h3 className="font-medium mb-2">Inflasi Tahunan</h3>
-              <div className="text-sm text-gray-700">
-                {purchaseYear && !yearError ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {Array.from({ length: Math.min(6, currentYear - Number(purchaseYear)) }, (_, i) => Number(purchaseYear) + i)
-                      .map(year => (
-                        <div key={year} className="mb-1">
-                          <span className="font-medium">{year}:</span> {INFLATION_RATES[year]}%
-                        </div>
-                      ))
-                    }
-                  </div>
-                ) : (
-                  <p>Pilih tahun untuk melihat data inflasi</p>
-                )}
-              </div>
+              <ScrollArea className="h-[200px]">
+                <div className="grid grid-cols-3 gap-2 pr-4">
+                  {purchaseYear && !yearError && inflationData.map(year => (
+                    <div key={year.year} className="mb-1">
+                      <span className="font-medium">{year.year}:</span>{' '}
+                      {INFLATION_RATES[year.year]}%
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
           </div>
         </div>
